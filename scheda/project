@@ -1,0 +1,5 @@
+schematics controller.sch
+output-name board
+elements-dir /home/luigi/computer/electronics/gaf/pcb-elements/pcb-elements/capacitors/
+elements-dir /home/luigi/computer/electronics/gaf/pcb-elements/pcb-elements/resistors/
+elements-dir /home/luigi/computer/electronics/gaf/pcb-elements/

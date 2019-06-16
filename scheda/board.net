@@ -1,0 +1,8 @@
+pump_button	NANO-5 R1-2 BUTTON-2 
+heater_relay	NANO-6 RELAY-3 
+pump_relay	NANO-7 RELAY-2 
++5V	NANO-27 PWR-1 BUTTON-1 RELAY-1 
++3.3V	NANO-18 NANO-17 NTC-1 R3-3 
+potentiometer	NANO-25 R3-2 
+temp_voltage_div	NANO-26 NTC-2 R2-1 
+GND	NANO-4 R1-1 NANO-29 PWR-2 RELAY-4 R3-1 R2-2 
