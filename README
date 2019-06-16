@@ -1,0 +1,14 @@
+Arduino controller for a fog machine
+
+Hardware:
+-dual relay module
+-heater
+-pump
+-pipes
+-ntc thermistor
+-button
+-potentiometer
+
+before compiling the sketch, add the following lines to boards.txt
+
+[your board].compiler.c.elf.extra_flags=-Wl,-u,vfscanf -lscanf_flt
