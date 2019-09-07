@@ -11,8 +11,8 @@
 //Misc (see readtemperature.ino for more)
 #define MINT 150	//lowest temp
 #define MAXT 350	//highest temp
- #define ERROR
- #define DEBUG
+//#define ERROR
+//#define DEBUG
 
 //Macros
 
@@ -85,7 +85,7 @@ void setup() {
 	
 	HEAT
 	SPUMP
-	temp.measure = 200;	//TEST
+	//temp.measure = 200;	//TEST
 }
 
 void loop() {
@@ -239,7 +239,7 @@ void loop() {
 	}
 	
 	
-	//temp.measure = getTemp(THERPIN);
+	temp.measure = getTemp(THERPIN);
 	//FIXME
 	
 	/*if not ready & not heating*/
@@ -259,7 +259,7 @@ void loop() {
 	if(temp.measure < MINT){
 		#ifdef ERROR
 		Serial.print("Too low");
-		Serial.print(temps);
+		Serial.println(temps);
 		#endif
 		if (!digitalRead(MOTORPIN)){
 			SPUMP			//stop pumping
