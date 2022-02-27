@@ -1,4 +1,4 @@
-Arduino controller for a fog machine
+Arduino (Nano old bootloader) controller for a fog machine
 
 Hardware:
 -dual relay module
@@ -15,7 +15,7 @@ before compiling the sketch, add the following lines to boards.txt
 
 Serial commands:
 	t <temp>	set new goal temperature temp, which is a dot-searated float
-	p		start / stop pumping if buttonis inactive
+	p		start / stop pumping if button is inactive
 	dn		enable / disable nozzle
 	db		enable / disable pump button
 	s		print current status

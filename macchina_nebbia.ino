@@ -9,10 +9,11 @@
 //#define DIPIB 4	//dipswitch to control state of pump button, optional
 
 //Misc (see readtemperature.ino for more)
-#define MINT 150	//lowest temp
-#define MAXT 350	//highest temp
+#define MINT 65	//lowest temp
+#define MAXT 80	//highest temp
+
 //#define ERROR
-//#define DEBUG
+#define DEBUG
 
 //Macros
 
@@ -20,20 +21,25 @@
 
 /*relay module for HEAT and PUMPs, LOW close circuit, HIGH open*/
 #ifdef DEBUG
-#define HEAT digitalWrite(HEATERPIN, LOW);\
-Serial.println("H start");
+	#define HEAT digitalWrite(HEATERPIN, LOW);\
+	Serial.println("H start");
 
-#define PUMP digitalWrite(MOTORPIN, LOW);\
-Serial.println("P start");
+	#define PUMP digitalWrite(MOTORPIN, LOW);\
+	Serial.println("P start");
+	
+	#define SHEAT digitalWrite(HEATERPIN, HIGH);\
+	Serial.println("H stop");
 
-#define SPUMP digitalWrite(MOTORPIN, HIGH);\
-Serial.println("P stop");
+	#define SPUMP digitalWrite(MOTORPIN, HIGH);\
+	Serial.println("P stop");
 #else
-#define HEAT digitalWrite(HEATERPIN, LOW);
+	#define HEAT digitalWrite(HEATERPIN, LOW);
 
-#define PUMP digitalWrite(MOTORPIN, LOW);
+	#define PUMP digitalWrite(MOTORPIN, LOW);
 
-#define SPUMP digitalWrite(MOTORPIN, HIGH);
+	#define SHEAT digitalWrite(HEATERPIN, HIGH);
+	
+	#define SPUMP digitalWrite(MOTORPIN, HIGH);
 #endif
 
 //Strings
@@ -46,6 +52,9 @@ String ina = "inactive";
 //Global variables
 bool an = true;		//active nozzle flag, default is active
 bool ab = true;		//active button flag, default is active
+bool alt = false;	//manually stop heating
+bool mon = false;	//monitoring temperature
+bool tpf = false;	//temperature probe failed
 
 struct temp {
 	float sett;  //wanted temp
@@ -97,6 +106,27 @@ void loop() {
 		char *strp = str.c_str(), com;		//String to char*; one-char command
 		sscanf(strp++, "%c", &com);		//char* to char, pointer++ for later extraction in t & d comands
 		switch(com){
+			case 'a' :
+				if (!alt){
+					Serial.println("Stopping heating...");
+					alt=true;
+					SHEAT;
+				}
+				else {
+					Serial.println("Resuming normal functioning");
+					alt=false;
+				}
+				break;
+			case 'm' :
+				if (!mon){
+					Serial.println("Activating temperature monitoring...");
+					mon=true;
+				}
+				else {
+					Serial.println("Disabling temperature monitoring...");
+					mon=false;
+				}
+				
 			case 't' :
 				/*set new temp from serial connection, this will 
 				 * overrides by design temp from nozzle
@@ -122,7 +152,7 @@ void loop() {
 				break;
 				
 			case 'p' :
-				/*start / stop pumping, just if button is inactive, or it would be useless*/
+				/*start / stop pumping, just if button is inactive*/
 				if (ab){
 					#ifdef ERROR
 					Serial.print("Button is ");
@@ -226,7 +256,9 @@ void loop() {
 		/*if temp not changed by serial connection,
 		 *    check if it changed on nozzle, if active*/
 		GETPOTEMP
-		if (temp.pote.curr != temp.pote.old){
+		
+		//non uso != perchè valore molto ballerino, mentre se è variato di almeno un grado(.2) è manopola che è stata ruotata e non errore di lettura 
+		if (temp.pote.curr < temp.pote.old-1.2 || temp.pote.curr > temp.pote.old+1.2){
 			temp.pote.old = temp.pote.curr;
 			temp.sett = temp.pote.curr;
 			#ifdef DEBUG
@@ -240,19 +272,25 @@ void loop() {
 	
 	
 	temp.measure = getTemp(THERPIN);
-	//FIXME
 	
-	/*if not ready & not heating*/
+	//if monitoring temp is active
+	if (mon){
+		Serial.print(temps);
+		Serial.print(temp.measure);
+		Serial.println(" °C");
+	}
+	
+	
+	/* BEGIN old stuff
+	
+	//if not ready & not heating
 	if (temp.measure < temp.sett && digitalRead(HEATERPIN)){
 		HEAT;			//start heating
 	}
-	/*else if ready & heating*/
+	//else if ready & heating
 	else if (temp.measure >= temp.sett){
 		if (!digitalRead(HEATERPIN)){
-			digitalWrite(HEATERPIN, HIGH);		//stop heating
-			#ifdef DEBUG
-			Serial.println("H stop");
-			#endif
+			SHEAT;		//stop heating
 		}
 	}
 	
@@ -270,14 +308,104 @@ void loop() {
 	}
 	else {
 		if(ab){
-			/*if button pressed but not pumping*/
+			//if button pressed but not pumping
 			if (digitalRead(BUTTONPIN) && digitalRead(MOTORPIN)){
 				PUMP		//start pumping
 			}
-			/*else if not pressed but still pumping*/
+			//else if not pressed but still pumping
 			else if (!digitalRead(BUTTONPIN) && !digitalRead(MOTORPIN)){
 				SPUMP		//stop pumping
 			}
+		}
+	}
+	
+	END old stuff*/
+	
+	//BEGIN security controls
+	
+	//if manually stopped heating
+	if (alt){
+		
+		//if still heating
+		if (!digitalRead(HEATERPIN)){
+			SHEAT;
+		}
+		
+		//cause the function loop to end immediately and restart
+		return;
+	}
+	
+	//if measured temperature is not reasonable (sometimes the thermometer fails)
+	if (temp.measure <  -40){
+		
+		//if still heating
+		if (!digitalRead(HEATERPIN)){
+			tpf = true;
+			Serial.println("    Error!    Temperature probe failing!\n");
+			SHEAT;
+			Serial.println("use \'m\' to monitor the measured temperature");
+		}
+		
+		//cause the function loop to end immediately and restart
+		return;
+	}
+	else {
+		//if not failing
+		
+		//if failed before
+		if (tpf) {
+			Serial.print("Temperature probe seems back to normal");
+			Serial.println("Resuming standard operations");
+			tpf=false;
+		}
+		
+	}
+	
+	//END security controls
+	
+	//if temp is not the desired one
+	if (temp.measure < temp.sett){
+		
+		//if not heating
+		if (digitalRead(HEATERPIN)){
+			HEAT;
+		}
+		
+		/* without this is possible to pump (db + p) even if is not hot
+		//if temp below minimum && pumping
+		if (temp.measure < MINT && !digitalRead(MOTORPIN)){
+			SPUMP;		//Stop Pumping
+		}
+		*/
+	}
+	else {
+		//if temperature is >= the desired one
+		
+		//if heating
+		if (!digitalRead(HEATERPIN)){
+			SHEAT;		//Stop Heating
+		}
+		
+		//if button active
+		if (ab) {
+			
+			//if button pressed
+			if (digitalRead(BUTTONPIN)){
+				
+				//if not pumping
+				if (digitalRead(MOTORPIN)){
+					PUMP;
+				}
+			}
+			else{
+				//if button not pressed
+				
+				//if pumping
+				if (!digitalRead(MOTORPIN)){
+					SPUMP;
+				}
+			}
+			
 		}
 	}
 }
