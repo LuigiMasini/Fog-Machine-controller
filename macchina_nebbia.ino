@@ -9,11 +9,11 @@
 //#define DIPIB 4	//dipswitch to control state of pump button, optional
 
 //Misc (see readtemperature.ino for more)
-#define MINT 65	//lowest temp
-#define MAXT 80	//highest temp
+#define MINT 120	//lowest temp
+#define MAXT 250	//highest temp
 
 //#define ERROR
-#define DEBUG
+//#define DEBUG
 
 //Macros
 
